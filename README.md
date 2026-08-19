@@ -22,10 +22,10 @@ The helper uses `bash`, `curl`, and `jq`. Copying uses `wl-copy`. The plugin nev
 
 ## Install
 
-Use the native menus to install plugins from this repository or run
+Use the native Omarchy menu to install the plugin from this repository or run:
 
 ```bash
-omarchy plugin add https://github.com/YOUR-USER/omarchy-qotd.git --enable
+omarchy plugin add https://github.com/camartinezbu/omaquote.git --enable
 ```
 
 ## Manual development install
