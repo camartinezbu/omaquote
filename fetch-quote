@@ -1,0 +1,130 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+for cmd in curl jq; do
+  if ! command -v "$cmd" >/dev/null 2>&1; then
+    printf 'Missing required command: %s\n' "$cmd" >&2
+    exit 127
+  fi
+done
+
+cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/omarchy-qotd"
+cache_file="$cache_dir/quote.json"
+today_utc="$(date -u +%F)"
+refresh=false
+[[ "${1:-}" == "--refresh" ]] && refresh=true
+mkdir -p "$cache_dir"
+
+emit_cache() {
+  local stale="${1:-false}"
+  jq -c --argjson stale "$stale" '. + {stale:$stale}' "$cache_file"
+}
+
+fallback_or_fail() {
+  local message="$1"
+  if [[ -s "$cache_file" ]] && jq -e '.quote and .author' "$cache_file" >/dev/null 2>&1; then
+    emit_cache true
+    exit 0
+  fi
+  printf '%s\n' "$message" >&2
+  exit 1
+}
+
+# Schema 2 adds the Wikipedia description. An old cache is refreshed once,
+# while still remaining usable as the offline fallback if the network is down.
+if [[ "$refresh" == false && -s "$cache_file" ]] \
+   && jq -e --arg d "$today_utc" \
+        '.schema_version == 2
+         and .fetched_utc_day == $d
+         and (.quote | type == "string")
+         and (.author | type == "string")' \
+        "$cache_file" >/dev/null 2>&1; then
+  emit_cache false
+  exit 0
+fi
+
+user_agent="omarchy-qotd/0.2.5"
+if ! raw="$(curl -fsSL --connect-timeout 5 --max-time 10 \
+  -A "$user_agent" https://zenquotes.io/api/today)"; then
+  fallback_or_fail "Could not reach ZenQuotes."
+fi
+
+if ! quote="$(jq -er '.[0].q | select(type == "string" and length > 0)' <<<"$raw")"; then
+  fallback_or_fail "ZenQuotes returned an invalid quote response."
+fi
+
+if ! author="$(jq -er '.[0].a | select(type == "string" and length > 0)' <<<"$raw")"; then
+  fallback_or_fail "ZenQuotes returned an invalid author response."
+fi
+
+provider_date="$(jq -r '.[0].date // ""' <<<"$raw")"
+
+wiki_title=""
+wiki_url=""
+wiki_description=""
+
+# OpenSearch resolves aliases/redirects to a likely biography instead of
+# guessing a /wiki/<author> URL.
+if wiki_search="$(curl -fsSLG --connect-timeout 5 --max-time 8 \
+  -A "$user_agent" \
+  --data-urlencode 'action=opensearch' \
+  --data-urlencode "search=$author" \
+  --data-urlencode 'limit=1' \
+  --data-urlencode 'namespace=0' \
+  --data-urlencode 'redirects=resolve' \
+  --data-urlencode 'format=json' \
+  https://en.wikipedia.org/w/api.php 2>/dev/null)"; then
+  wiki_title="$(jq -r '.[1][0] // ""' <<<"$wiki_search" 2>/dev/null || true)"
+  wiki_url="$(jq -r '.[3][0] // ""' <<<"$wiki_search" 2>/dev/null || true)"
+fi
+
+# Wikipedia's pageterms description is sourced from Wikidata and is ideal for
+# a compact one-line author context. Failure here is non-fatal.
+if [[ -n "$wiki_title" ]]; then
+  if wiki_meta="$(curl -fsSLG --connect-timeout 5 --max-time 8 \
+    -A "$user_agent" \
+    --data-urlencode 'action=query' \
+    --data-urlencode 'format=json' \
+    --data-urlencode 'formatversion=2' \
+    --data-urlencode 'redirects=1' \
+    --data-urlencode 'prop=info|pageterms' \
+    --data-urlencode 'inprop=url' \
+    --data-urlencode 'wbptterms=description' \
+    --data-urlencode "titles=$wiki_title" \
+    https://en.wikipedia.org/w/api.php 2>/dev/null)"; then
+    resolved_title="$(jq -r '.query.pages[0].title // ""' <<<"$wiki_meta" 2>/dev/null || true)"
+    resolved_url="$(jq -r '.query.pages[0].fullurl // ""' <<<"$wiki_meta" 2>/dev/null || true)"
+    wiki_description="$(jq -r '.query.pages[0].terms.description[0] // ""' <<<"$wiki_meta" 2>/dev/null || true)"
+    [[ -n "$resolved_title" ]] && wiki_title="$resolved_title"
+    [[ -n "$resolved_url" ]] && wiki_url="$resolved_url"
+  fi
+fi
+
+tmp="$(mktemp "$cache_dir/.quote.XXXXXX")"
+trap 'rm -f "$tmp"' EXIT
+
+jq -n -c \
+  --arg quote "$quote" \
+  --arg author "$author" \
+  --arg provider_date "$provider_date" \
+  --arg fetched_utc_day "$today_utc" \
+  --arg wiki_title "$wiki_title" \
+  --arg wiki_url "$wiki_url" \
+  --arg wiki_description "$wiki_description" \
+  '{
+    schema_version: 2,
+    quote: $quote,
+    author: $author,
+    provider_date: $provider_date,
+    fetched_utc_day: $fetched_utc_day,
+    wiki_title: $wiki_title,
+    wiki_url: $wiki_url,
+    wiki_description: $wiki_description,
+    source: "ZenQuotes",
+    source_url: "https://zenquotes.io/",
+    stale: false
+  }' > "$tmp"
+
+mv "$tmp" "$cache_file"
+trap - EXIT
+cat "$cache_file"

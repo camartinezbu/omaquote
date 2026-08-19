@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "qotd.zenquotes",
+  "name": "Quote of the Day",
+  "version": "0.2.5",
+  "description": "A native-style Omarchy Quattro quote panel with Wikipedia context and optional default-agent explanation",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "Quote of the Day",
+    "description": "Today's quote, author context, Wikipedia and optional agent explanation",
+    "category": "Info",
+    "allowMultiple": false,
+    "defaultSection": "right"
+  }
+}
