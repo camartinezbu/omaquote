@@ -3,6 +3,8 @@
   "id": "omaquote",
   "name": "Quote of the Day",
   "version": "1.0.0",
+  "author": "Camilo Martínez Burgos",
+  "license": "MIT",
   "description": "A native-style Omarchy Quattro quote panel with Wikipedia context and optional default-agent explanation",
   "kinds": [
     "bar-widget"
