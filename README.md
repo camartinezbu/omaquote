@@ -1,8 +1,98 @@
 # Quote of the Day for Omarchy Quattro
 
-A third-party Omarchy `bar-widget` that follows the same bar-panel integration contract as first-party panel widgets. It fetches the daily quote from ZenQuotes, caches it once per UTC day, resolves the author through English Wikipedia, adds Wikipedia's one-line description when available, and can send the displayed quote to Omarchy's configured default agent.
+A native-style Omarchy Quattro bar plugin that displays a daily quote from ZenQuotes.
 
-## Repository layout
+The panel includes the quote, author information from Wikipedia, quick copy and refresh actions, and optional explanation through Omarchy's configured default agent.
+
+## Install
+
+Review this repository before installation, then run:
+
+```sh
+omarchy plugin add https://github.com/camartinezbu/omaquote.git --enable
+```
+
+You can also install it through Omarchy's plugin interface using this repository:
+
+```text
+https://github.com/camartinezbu/omaquote.git
+```
+
+## Remove
+
+Remove the plugin with:
+
+```sh
+omarchy plugin remove omaquote
+```
+
+This disables the plugin and removes its installed plugin files.
+
+## Dependencies
+
+The plugin uses:
+
+- `bash`
+- `curl`
+- `jq`
+- `wl-copy`
+
+These are used for fetching and processing quotes, retrieving author information, and copying quotes to the clipboard.
+
+The plugin does not install dependencies itself.
+
+## Usage
+
+Click the bar icon to open or close the Quote of the Day panel.
+
+Right-click the icon to open the current author's Wikipedia page.
+
+Middle-click the icon to refresh the quote and open the panel.
+
+### Keyboard controls
+
+```text
+Left / Right or h / l   Select an action
+Up / Down or j / k      Scroll
+Return / Space          Activate selected action
+Tab / Shift+Tab         Switch neighboring panels
+Escape                  Close the panel
+
+c                       Copy quote
+w                       Open Wikipedia biography
+e                       Explain with default agent
+r                       Refresh quote
+z                       Open ZenQuotes source
+```
+
+## IPC
+
+The plugin exposes the `omaquote` IPC target.
+
+```sh
+omarchy-shell omaquote open
+omarchy-shell omaquote close
+omarchy-shell omaquote refresh
+omarchy-shell omaquote biography
+omarchy-shell omaquote copy
+omarchy-shell omaquote explain
+```
+
+## Data and privacy
+
+The plugin contacts ZenQuotes to retrieve the daily quote and English Wikipedia to resolve author information.
+
+A local JSON cache is used so the quote does not need to be fetched repeatedly during the same day.
+
+The **Explain** action checks Omarchy's configured default agent. It is only invoked after explicit user input and sends the displayed quote and author to:
+
+```sh
+omarchy agent prompt
+```
+
+If no default agent is configured, the Explain action is unavailable.
+
+## Development
 
 The repository root is the plugin root. `manifest.json` must remain at the root.
 
@@ -13,74 +103,15 @@ The repository root is the plugin root. `manifest.json` must remain at the root.
 ├── Panel.qml
 ├── fetch-quote
 ├── README.md
-└── .gitignore
+└── LICENSE
 ```
 
-## Dependencies
+To validate a local checkout:
 
-The helper uses `bash`, `curl`, and `jq`. Copying uses `wl-copy`. The plugin never installs dependencies itself; Omarchy plugin installation only clones, validates, and enables plugin files.
-
-## Install
-
-Use the native Omarchy menu to install the plugin from this repository or run:
-
-```bash
-omarchy plugin add https://github.com/camartinezbu/omaquote.git --enable
+```sh
+omarchy plugin validate .
 ```
-
-## Manual development install
-
-From the repository root:
-
-```bash
-mkdir -p ~/.config/omarchy/plugins/qotd.zenquotes
-cp -a manifest.json BarWidget.qml Panel.qml fetch-quote README.md .gitignore \
-  ~/.config/omarchy/plugins/qotd.zenquotes/
-chmod +x ~/.config/omarchy/plugins/qotd.zenquotes/fetch-quote
-
-omarchy plugin validate ~/.config/omarchy/plugins/qotd.zenquotes
-omarchy-shell shell rescanPlugins
-omarchy plugin enable qotd.zenquotes
-```
-
-## Hotkwys
-
-```text
-Left/Right or h/l     select an action
-Up/Down or j/k        scroll long content
-Return/Space          activate selected action
-Tab / Shift+Tab       switch neighboring panels
-Escape                close
-c                     copy quote
-w                     Wikipedia biography
-e                     explain with default agent
-r                     refresh
-z                     ZenQuotes source
-```
-
-Mouse behavior:
-
-```text
-Left click             toggle panel
-Right click            open biography
-Middle click           force refresh and open panel
-```
-
-The plugin also registers its own target for quote-specific actions:
-
-```bash
-omarchy-shell qotd.zenquotes open
-omarchy-shell qotd.zenquotes close
-omarchy-shell qotd.zenquotes refresh
-omarchy-shell qotd.zenquotes biography
-omarchy-shell qotd.zenquotes copy
-omarchy-shell qotd.zenquotes explain
-omarchy-shell qotd.zenquotes ask   # backward-compatible alias
-```
-## Data and privacy
-
-The helper calls ZenQuotes for the daily quote and English Wikipedia for author resolution and description. It stores one local JSON cache file. The Explain action checks `omarchy-default-agent` on every panel open. If no default agent is selected, Explain is visibly unavailable and keyboard navigation skips it. When available, it runs only after explicit user input and invokes `omarchy agent prompt` with the displayed quote and author.
 
 ## License
 
-This project is licensed under the MIT License.
+MIT
