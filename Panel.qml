@@ -7,8 +7,8 @@ import qs.Ui
 
 Panel {
   id: root
-  moduleName: "qotd.zenquotes"
-  ipcTarget: "qotd.zenquotes"
+  moduleName: "omaquote"
+  ipcTarget: "omaquote"
   manageIpc: false
 
   property var anchorItem: null
@@ -23,7 +23,7 @@ Panel {
   readonly property color contentForeground: bar ? bar.foreground : Color.foreground
   readonly property string contentFontFamily: bar ? bar.fontFamily : Style.font.family
   readonly property string helperPath: Qt.resolvedUrl("fetch-quote").toString().replace(/^file:\/\//, "")
-  readonly property int desiredWidth: Style.space(460)
+  readonly property int desiredWidth: Style.space(380)
   readonly property int maximumHeight: Style.space(350)
 
   property bool loading: false
